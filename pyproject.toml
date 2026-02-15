@@ -1,0 +1,50 @@
+[project]
+name = "my-package"
+version = "0.1.0"
+description = "Python CLI package boilerplate using PDM and Typer"
+readme = "README.md"
+authors = [
+  { name = "Your Name", email = "you@example.com" },
+]
+requires-python = ">=3.9"
+license = { text = "MIT" }
+keywords = ["cli", "typer", "boilerplate"]
+classifiers = [
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3 :: Only",
+  "License :: OSI Approved :: MIT License",
+  "Operating System :: OS Independent",
+]
+
+# Keep package at repo root under `my_package/`
+[tool.pdm]
+
+[project.urls]
+Homepage = "https://example.com"
+Repository = "https://example.com/repo"
+
+[project.dependencies]
+typer = ">=0.12,<1.0"
+rich = ">=13,<14"
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=8",
+  "pytest-cov>=5",
+  "ruff>=0.5",
+  "black>=24",
+  "mypy>=1.10",
+]
+
+[project.scripts]
+my-package = "my_package.cli.app:app"
+
+[tool.ruff]
+line-length = 100
+
+[tool.black]
+line-length = 100
+
+[tool.pytest.ini_options]
+addopts = "-q"
+testpaths = ["tests"]
