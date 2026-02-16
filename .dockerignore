@@ -1,0 +1,24 @@
+# environment variables
+.env
+.env.example
+
+# git
+.git
+.gitignore
+
+# dockerfiles
+.dockerignore
+Dockerfile
+docker-compose.yml
+
+# Virtual environment
+# .venv
+
+# ruff
+.ruff_cache
+
+# egg info
+nedap_ons_uptime.egg-info
+
+# pytest cache
+.pytest_cache

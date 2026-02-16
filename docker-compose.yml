@@ -1,0 +1,35 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: uptime
+      POSTGRES_PASSWORD: uptime
+      POSTGRES_DB: uptime
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U uptime"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+  app:
+    image: nedap-ons-uptime:latest
+    container_name: nedap-ons-uptime
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      DATABASE_URL: postgresql+asyncpg://uptime:uptime@postgres:5432/uptime
+      APP_HOST: 0.0.0.0
+      APP_PORT: 8000
+      CONCURRENCY: 20
+      RETENTION_DAYS: 35
+      APP_TIMEZONE: Europe/Amsterdam
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - ./nedap_ons_uptime:/app/nedap-ons-uptime
+
+volumes:
+  postgres_data:
