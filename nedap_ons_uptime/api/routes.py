@@ -217,6 +217,28 @@ async def get_target_history(
     return list(result.scalars().all())
 
 
+@router.get("/history", response_model=list[CheckResponse])
+async def get_all_history(
+    hours: int = Query(default=24, ge=1, le=720),
+    target_id: str | None = Query(default=None),
+    up: bool | None = Query(default=None),
+    session: AsyncSession = Depends(get_session),
+) -> list[Check]:
+    """Get check history across all targets with optional filters."""
+    cutoff = datetime.utcnow() - timedelta(hours=hours)
+
+    query = select(Check).where(Check.checked_at >= cutoff)
+
+    if target_id:
+        query = query.where(Check.target_id == target_id)
+    if up is not None:
+        query = query.where(Check.up == up)
+
+    query = query.order_by(Check.checked_at.desc())
+    result = await session.execute(query)
+    return list(result.scalars().all())
+
+
 @router.get("/targets/{target_id}/uptime", response_model=UptimeResponse)
 async def get_target_uptime(
     target_id: str,
@@ -249,3 +271,66 @@ async def get_target_uptime(
         "up_checks": up_checks,
         "down_checks": down_checks,
     }
+
+
+class DailyUptimeResponse(BaseModel):
+    date: str
+    uptime_percentage: float
+    total_checks: int
+    up_checks: int
+    down_checks: int
+
+
+@router.get("/targets/{target_id}/daily", response_model=list[DailyUptimeResponse])
+async def get_target_daily_uptime(
+    target_id: str,
+    days: int = Query(default=30, ge=1, le=90),
+    session: AsyncSession = Depends(get_session),
+) -> list[dict[str, Any]]:
+    """Get daily uptime breakdown for the last N days."""
+    result = await session.execute(select(Target).where(Target.id == target_id))
+    target = result.scalar_one_or_none()
+    if target is None:
+        raise HTTPException(status_code=404, detail="Target not found")
+
+    cutoff = datetime.utcnow() - timedelta(days=days)
+
+    # Get all checks in the date range
+    result = await session.execute(
+        select(Check)
+        .where(Check.target_id == target_id)
+        .where(Check.checked_at >= cutoff)
+        .order_by(Check.checked_at.asc())
+    )
+    checks = result.scalars().all()
+
+    # Group by day
+    daily_data: dict[str, dict] = {}
+    for check in checks:
+        day_key = check.checked_at.strftime("%Y-%m-%d")
+        if day_key not in daily_data:
+            daily_data[day_key] = {"total": 0, "up": 0}
+        daily_data[day_key]["total"] += 1
+        if check.up:
+            daily_data[day_key]["up"] += 1
+
+    # Build response with all days (fill in missing days with 100% uptime)
+    response = []
+    for i in range(days - 1, -1, -1):
+        day = datetime.utcnow() - timedelta(days=i)
+        day_key = day.strftime("%Y-%m-%d")
+        day_data = daily_data.get(day_key, {"total": 0, "up": 0})
+
+        total = day_data["total"]
+        up = day_data["up"]
+        uptime_pct = (up / total * 100) if total > 0 else 100.0
+
+        response.append({
+            "date": day_key,
+            "uptime_percentage": round(uptime_pct, 2),
+            "total_checks": total,
+            "up_checks": up,
+            "down_checks": total - up,
+        })
+
+    return response
