@@ -3,16 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>NEDAP ONS UPTIME MONITOR</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+    <title>Nedap ONS Uptime Monitor</title>
     <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
-    <div class="noise-overlay"></div>
-    <div class="scanlines"></div>
-    
     <div class="app-container">
         <!-- Sidebar -->
         <aside class="sidebar">
@@ -25,7 +19,7 @@
                 </div>
                 <div class="brand-text">
                     <span class="brand-title">NEDAP ONS</span>
-                    <span class="brand-subtitle">UPTIME MONITOR</span>
+                    <span class="brand-subtitle">Uptime Monitor</span>
                 </div>
             </div>
             
@@ -48,9 +42,24 @@
             </nav>
             
             <div class="system-status">
-                <div class="status-indicator online"></div>
-                <span class="status-text">SYSTEM ONLINE</span>
+                <div class="status-row">
+                    <div class="status-indicator online"></div>
+                    <span class="status-text">System Online</span>
+                </div>
                 <span class="status-time" id="system-time">--:--:--</span>
+                
+                <div class="theme-toggle-sidebar">
+                    <button class="btn-theme" id="theme-toggle" aria-label="Toggle dark mode">
+                        <svg class="sun-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="12" r="5"/>
+                            <path d="M12 1v2m0 18v2M4.22 4.22l1.42 1.42m12.72 12.72l1.42 1.42M1 12h2m18 0h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/>
+                        </svg>
+                        <svg class="moon-icon hidden" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/>
+                        </svg>
+                        <span class="theme-text">Dark Mode</span>
+                    </button>
+                </div>
             </div>
         </aside>
 
@@ -60,22 +69,22 @@
             <div id="dashboard-tab" class="tab-content active">
                 <header class="page-header">
                     <div class="header-left">
-                        <h1 class="page-title">MONITORING DASHBOARD</h1>
-                        <p class="page-subtitle">Real-time service health monitoring</p>
+                        <h1 class="page-title">Monitoring Dashboard</h1>
+                        <p class="page-subtitle">Real-time service health overview</p>
                     </div>
-                    <button id="add-btn" class="btn btn-glow btn-primary">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <button id="add-btn" class="btn btn-primary">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18">
                             <line x1="12" y1="5" x2="12" y2="19"/>
                             <line x1="5" y1="12" x2="19" y2="12"/>
                         </svg>
-                        <span>ADD TARGET</span>
+                        <span>Add Target</span>
                     </button>
                 </header>
 
                 <!-- Stats Overview -->
                 <div class="stats-grid">
                     <div class="stat-card">
-                        <div class="stat-icon up">
+                        <div class="stat-icon success">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                 <path d="M22 11.08V12a10 10 0 11-5.93-9.14"/>
                                 <polyline points="22 4 12 14.01 9 11.01"/>
@@ -83,11 +92,11 @@
                         </div>
                         <div class="stat-content">
                             <span class="stat-value" id="stat-up">0</span>
-                            <span class="stat-label">SERVICES UP</span>
+                            <span class="stat-label">Services Up</span>
                         </div>
                     </div>
                     <div class="stat-card">
-                        <div class="stat-icon down">
+                        <div class="stat-icon danger">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                 <circle cx="12" cy="12" r="10"/>
                                 <line x1="15" y1="9" x2="9" y2="15"/>
@@ -96,11 +105,11 @@
                         </div>
                         <div class="stat-content">
                             <span class="stat-value" id="stat-down">0</span>
-                            <span class="stat-label">SERVICES DOWN</span>
+                            <span class="stat-label">Services Down</span>
                         </div>
                     </div>
                     <div class="stat-card">
-                        <div class="stat-icon total">
+                        <div class="stat-icon info">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                 <rect x="2" y="3" width="20" height="14" rx="2" ry="2"/>
                                 <line x1="8" y1="21" x2="16" y2="21"/>
@@ -109,33 +118,45 @@
                         </div>
                         <div class="stat-content">
                             <span class="stat-value" id="stat-total">0</span>
-                            <span class="stat-label">TOTAL MONITORED</span>
+                            <span class="stat-label">Total Monitored</span>
                         </div>
                     </div>
                     <div class="stat-card">
-                        <div class="stat-icon avg">
+                        <div class="stat-icon warning">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                 <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
                             </svg>
                         </div>
                         <div class="stat-content">
                             <span class="stat-value" id="stat-avg">0ms</span>
-                            <span class="stat-label">AVG LATENCY</span>
+                            <span class="stat-label">Avg Latency</span>
                         </div>
                     </div>
                 </div>
 
-                <!-- Targets Grid -->
-                <div id="targets-grid" class="targets-grid">
-                    <div class="empty-state">
-                        <div class="empty-icon">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-                                <circle cx="12" cy="12" r="10"/>
-                                <path d="M12 16v-4M12 8h.01"/>
-                            </svg>
+                <!-- Targets Table -->
+                <div class="targets-container">
+                    <div class="targets-header">
+                        <span>Name</span>
+                        <span>URL</span>
+                        <span>Status</span>
+                        <span>Last Checked</span>
+                        <span>Latency</span>
+                        <span>HTTP</span>
+                        <span>Error</span>
+                        <span>Actions</span>
+                    </div>
+                    <div id="targets-list" class="targets-list">
+                        <div class="empty-state">
+                            <div class="empty-icon">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                                    <circle cx="12" cy="12" r="10"/>
+                                    <path d="M12 16v-4M12 8h.01"/>
+                                </svg>
+                            </div>
+                            <h3>No targets configured</h3>
+                            <p>Add your first monitoring target to get started with uptime monitoring</p>
                         </div>
-                        <p>No targets configured</p>
-                        <span>Add your first monitoring target to get started</span>
                     </div>
                 </div>
             </div>
@@ -144,8 +165,8 @@
             <div id="history-tab" class="tab-content">
                 <header class="page-header">
                     <div class="header-left">
-                        <h1 class="page-title">CHECK HISTORY LOGS</h1>
-                        <p class="page-subtitle">Detailed monitoring event history</p>
+                        <h1 class="page-title">Check History</h1>
+                        <p class="page-subtitle">Detailed monitoring event logs with uptime visualization</p>
                     </div>
                     <div class="header-filters">
                         <select id="history-filter-target" class="filter-select">
@@ -153,8 +174,8 @@
                         </select>
                         <select id="history-filter-status" class="filter-select">
                             <option value="">All Status</option>
-                            <option value="up">UP</option>
-                            <option value="down">DOWN</option>
+                            <option value="true">Up</option>
+                            <option value="false">Down</option>
                         </select>
                         <select id="history-time-range" class="filter-select">
                             <option value="24">Last 24 Hours</option>
@@ -165,19 +186,36 @@
                     </div>
                 </header>
 
+                <!-- Uptime Timeline -->
+                <div class="uptime-timeline-card">
+                    <div class="timeline-header">
+                        <h3>30-Day Uptime History</h3>
+                        <span class="timeline-legend">
+                            <span class="legend-item"><span class="legend-bar operational"></span> Operational</span>
+                            <span class="legend-item"><span class="legend-bar degraded"></span> Degraded</span>
+                            <span class="legend-item"><span class="legend-bar down"></span> Down</span>
+                        </span>
+                    </div>
+                    <div id="uptime-timeline" class="timeline-bars">
+                        <div class="timeline-loading">Select a target to view uptime history</div>
+                    </div>
+                    <div class="timeline-footer">
+                        <span id="timeline-start">30 days ago</span>
+                        <span id="timeline-end">Today</span>
+                    </div>
+                </div>
+
                 <div class="history-container">
                     <div class="history-header">
-                        <span class="h-col time">TIMESTAMP</span>
-                        <span class="h-col target">TARGET</span>
-                        <span class="h-col status">STATUS</span>
-                        <span class="h-col latency">LATENCY</span>
-                        <span class="h-col http">HTTP</span>
-                        <span class="h-col error">ERROR</span>
+                        <span>Timestamp</span>
+                        <span>Target</span>
+                        <span>Status</span>
+                        <span>Latency</span>
+                        <span>HTTP</span>
+                        <span>Error</span>
                     </div>
                     <div id="history-list" class="history-list">
-                        <div class="history-empty">
-                            <p>Select filters to view history logs</p>
-                        </div>
+                        <div class="history-empty">Select filters to view history logs</div>
                     </div>
                 </div>
             </div>
@@ -187,8 +225,8 @@
     <!-- Target Details Panel -->
     <div id="details-panel" class="slide-panel hidden">
         <div class="panel-header">
-            <h2 id="details-title" class="panel-title">TARGET DETAILS</h2>
-            <button id="close-details" class="btn btn-icon">
+            <h2 id="details-title" class="panel-title">Target Details</h2>
+            <button id="close-details" class="btn btn-icon btn-ghost">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <line x1="18" y1="6" x2="6" y2="18"/>
                     <line x1="6" y1="6" x2="18" y2="18"/>
@@ -197,14 +235,16 @@
         </div>
         <div class="panel-content">
             <div class="details-grid">
-                <div class="detail-card uptime-card">
-                    <h3>UPTIME (30 DAYS)</h3>
+                <div class="detail-card">
+                    <h3>Uptime (30 Days)</h3>
                     <div id="uptime-percentage" class="uptime-big">--%</div>
                     <div id="uptime-details" class="uptime-sub">-- checks</div>
                 </div>
-                <div class="detail-card recent-card">
-                    <h3>LATEST CHECKS</h3>
-                    <div id="history-chart" class="recent-list"></div>
+                <div class="detail-card">
+                    <h3>Latest Checks (24h)</h3>
+                    <div id="history-chart" class="recent-list">
+                        <p style="color: var(--text-muted); font-size: 14px;">No recent checks</p>
+                    </div>
                 </div>
             </div>
         </div>
@@ -214,8 +254,8 @@
     <div id="modal" class="modal-overlay hidden">
         <div class="modal-container">
             <div class="modal-header">
-                <h2 id="modal-title" class="modal-title">ADD TARGET</h2>
-                <button id="cancel-btn" class="btn btn-icon">
+                <h2 id="modal-title" class="modal-title">Add Target</h2>
+                <button id="cancel-btn" class="btn btn-icon btn-ghost">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <line x1="18" y1="6" x2="6" y2="18"/>
                         <line x1="6" y1="6" x2="18" y2="18"/>
@@ -226,39 +266,37 @@
                 <input type="hidden" id="target-id">
                 <div class="form-row">
                     <div class="form-group">
-                        <label for="name">TARGET NAME</label>
+                        <label for="name">Target Name</label>
                         <input type="text" id="name" name="name" required placeholder="e.g. Production API">
                     </div>
                     <div class="form-group">
-                        <label for="url">URL / ENDPOINT</label>
+                        <label for="url">URL / Endpoint</label>
                         <input type="url" id="url" name="url" required placeholder="https://api.example.com/health">
                     </div>
                 </div>
                 <div class="form-row">
                     <div class="form-group">
-                        <label for="interval_s">CHECK INTERVAL (SECONDS)</label>
+                        <label for="interval_s">Check Interval (seconds)</label>
                         <input type="number" id="interval_s" name="interval_s" min="10" max="3600" value="60">
                     </div>
                     <div class="form-group">
-                        <label for="timeout_s">TIMEOUT (SECONDS)</label>
+                        <label for="timeout_s">Timeout (seconds)</label>
                         <input type="number" id="timeout_s" name="timeout_s" min="1" max="30" value="10">
                     </div>
                 </div>
                 <div class="form-row checkboxes">
                     <label class="checkbox-label">
                         <input type="checkbox" id="enabled" name="enabled" checked>
-                        <span class="checkmark"></span>
-                        <span class="checkbox-text">ENABLED</span>
+                        <span>Enabled</span>
                     </label>
                     <label class="checkbox-label">
                         <input type="checkbox" id="verify_tls" name="verify_tls" checked>
-                        <span class="checkmark"></span>
-                        <span class="checkbox-text">VERIFY TLS</span>
+                        <span>Verify TLS</span>
                     </label>
                 </div>
                 <div class="modal-actions">
-                    <button type="button" id="cancel-btn-alt" class="btn btn-secondary">CANCEL</button>
-                    <button type="submit" class="btn btn-glow btn-primary">SAVE TARGET</button>
+                    <button type="button" id="cancel-btn-alt" class="btn btn-secondary">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Save Target</button>
                 </div>
             </form>
         </div>
