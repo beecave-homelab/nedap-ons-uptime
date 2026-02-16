@@ -1,80 +1,93 @@
-# Python CLI Package Boilerplate (PDM + Typer)
+# Nedap ONS Uptime
 
-A modern Python CLI package boilerplate using PDM for package management and Typer for CLI functionality. The package is organized into clearly separated submodules (e.g., `my_package/cli/`, `my_package/utils/`) and follows the coding rules in `docs/python-coding-standards.md` with Google style docstrings.
+A minimal self-hosted uptime dashboard for monitoring HTTP/HTTPS endpoints.
 
-## Versions
+## Features
 
-**Current version**: 1.0.0
+- Monitor HTTP/HTTPS endpoints with configurable intervals and timeouts
+- Real-time status dashboard with latency and error tracking
+- 30+ days of historical data with automatic retention cleanup
+- Simple web UI for managing targets
+- RESTful API for integrations
+- PostgreSQL for reliable data storage
+- Docker Compose for easy deployment
 
-## Table of Contents
+## Quick Start
 
-- [Versions](#versions)
-- [Badges](#badges)
-- [Repository Contents](#repository-contents)
-- [Getting Started (PDM)](#getting-started-pdm)
-- [License](#license)
-- [Contributing](#contributing)
+### Docker Compose (Recommended)
 
-## Badges
+```bash
+docker compose up -d --build
+```
 
-![Python](https://img.shields.io/badge/Python-3.9%2B-blue)
-![License](https://img.shields.io/badge/License-MIT-green)
+Access the dashboard at http://localhost:8000
 
-## Repository Contents
+### Local Development with PDM
 
-- **Python Coding Standards**: see `docs/python-coding-standards.md`.
-- **Package**: `my_package/` with submodules:
-  - `my_package/cli/` Typer app and commands
-  - `my_package/utils/` reusable helpers
-  - `my_package/__about__.py` version metadata
-  - `my_package/__init__.py` top-level exports
-- **Tests**: `tests/`
-- **Build/Deps**: `pyproject.toml` managed by PDM
-
-## Getting Started (PDM)
-
-Prerequisite: install [PDM](https://pdm.fming.dev)
-
+Install PDM:
 ```bash
 python3 -m pip install -U pdm
 ```
 
-Install dependencies and set up a local venv:
-
+Install dependencies:
 ```bash
 pdm install
 ```
 
-Run the CLI (installed console script):
-
+Set up PostgreSQL and configure `DATABASE_URL` environment variable:
 ```bash
-pdm run my-package --help
-pdm run my-package --version
-pdm run my-package hello Alice
+export DATABASE_URL="postgresql+asyncpg://user:pass@localhost:5432/uptime"
 ```
 
-Run tests:
-
+Run migrations:
 ```bash
-pdm run pytest
+pdm run nedap-ons-uptime migrate
 ```
 
-Code quality:
-
+Start the server:
 ```bash
-pdm run ruff check .
-pdm run black .
+pdm run nedap-ons-uptime serve
 ```
 
-Notes:
+## Configuration
 
-- Legacy files like `setup.py` and `requirements.txt` are no longer used with PDM.
-- Entry point is defined in `pyproject.toml` under `[project.scripts]` as `my-package`.
+Environment variables:
+
+- `DATABASE_URL` - PostgreSQL connection URL (required)
+- `APP_HOST` - Host to bind to (default: `0.0.0.0`)
+- `APP_PORT` - Port to listen on (default: `8000`)
+- `CONCURRENCY` - Max concurrent checks (default: `20`)
+- `RETENTION_DAYS` - Days to keep historical data (default: `35`)
+- `APP_TIMEZONE` - Timezone used for UI date/time display (default: `Europe/Amsterdam`)
+
+## CLI Commands
+
+```bash
+pdm run nedap-ons-uptime serve      # Run server and worker
+pdm run nedap-ons-uptime migrate    # Run database migrations
+pdm run nedap-ons-uptime check-once # Run a single check cycle
+```
+
+## API Endpoints
+
+### Targets
+- `GET /api/targets` - List all targets
+- `POST /api/targets` - Create a new target
+- `GET /api/targets/{id}` - Get target details
+- `PATCH /api/targets/{id}` - Update a target
+- `DELETE /api/targets/{id}` - Delete a target
+
+### Status
+- `GET /api/status` - Get latest status for all targets
+- `GET /api/targets/{id}/history?hours=24` - Get check history
+- `GET /api/targets/{id}/uptime?days=30` - Get uptime percentage
+
+### Config
+- `GET /api/config` - Get application config (including configured timezone)
+
+### Health
+- `GET /healthz` - Health check endpoint
 
 ## License
 
-This project is licensed under the MIT license. See [LICENSE](LICENSE) for more information.
-
-## Contributing
-
-Pull requests are welcome. For major changes, please open an issue first to discuss what you would like to change.
+MIT
