@@ -25,6 +25,11 @@ services:
       CONCURRENCY: 20
       RETENTION_DAYS: 35
       APP_TIMEZONE: Europe/Amsterdam
+      AUTH_ENABLED: "true"
+      AUTH_USERNAME: admin
+      AUTH_PASSWORD: change-me
+      SESSION_SECRET_KEY: change-me-session-secret
+      SESSION_MAX_AGE: 86400
     depends_on:
       postgres:
         condition: service_healthy
