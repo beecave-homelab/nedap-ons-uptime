@@ -8,6 +8,7 @@ A minimal self-hosted uptime dashboard for monitoring HTTP/HTTPS endpoints.
 - Real-time status dashboard with latency and error tracking
 - 30+ days of historical data with automatic retention cleanup
 - Simple web UI for managing targets
+- Single-user UI authentication with read-only public mode
 - RESTful API for integrations
 - PostgreSQL for reliable data storage
 - Docker Compose for easy deployment
@@ -59,6 +60,18 @@ Environment variables:
 - `CONCURRENCY` - Max concurrent checks (default: `20`)
 - `RETENTION_DAYS` - Days to keep historical data (default: `35`)
 - `APP_TIMEZONE` - Timezone used for UI date/time display (default: `Europe/Amsterdam`)
+- `AUTH_ENABLED` - Enable/disable authentication gate for write operations (default: `true`)
+- `AUTH_USERNAME` - Single username allowed to sign in (default: `admin`)
+- `AUTH_PASSWORD` - Password for the configured user (default: `change-me`)
+- `SESSION_SECRET_KEY` - Secret used to sign session cookies (required in production)
+- `SESSION_MAX_AGE` - Session cookie max age in seconds (default: `86400`)
+
+When `AUTH_ENABLED=true`:
+- unauthenticated users can read dashboard data,
+- only authenticated users can create, update, or delete targets,
+- target URLs are masked until the user signs in.
+
+> Security recommendation: set a strong `SESSION_SECRET_KEY`, change default credentials, and run behind HTTPS.
 
 ## CLI Commands
 
@@ -76,6 +89,11 @@ pdm run nedap-ons-uptime check-once # Run a single check cycle
 - `GET /api/targets/{id}` - Get target details
 - `PATCH /api/targets/{id}` - Update a target
 - `DELETE /api/targets/{id}` - Delete a target
+
+### Authentication
+- `GET /api/auth/me` - Get current auth state
+- `POST /api/auth/login` - Sign in with configured single-user credentials
+- `POST /api/auth/logout` - Sign out current session
 
 ### Status
 - `GET /api/status` - Get latest status for all targets
