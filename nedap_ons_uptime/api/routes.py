@@ -1,15 +1,25 @@
+from __future__ import annotations
+
 from datetime import datetime, timedelta
 from typing import Any
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from pydantic import BaseModel, Field, HttpUrl
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from ..config import get_settings
-from ..db.models import Check, Target
-from ..db.session import get_session
+from nedap_ons_uptime.auth import (
+    clear_authenticated,
+    is_authenticated,
+    mask_url,
+    require_authenticated_user,
+    set_authenticated,
+    verify_credentials,
+)
+from nedap_ons_uptime.config import get_settings
+from nedap_ons_uptime.db.models import Check, Target
+from nedap_ons_uptime.db.session import get_session
 
 router = APIRouter()
 
@@ -84,21 +94,108 @@ class ConfigResponse(BaseModel):
     app_timezone: str
 
 
+class LoginRequest(BaseModel):
+    username: str
+    password: str
+
+
+class AuthStateResponse(BaseModel):
+    authenticated: bool
+    auth_enabled: bool
+
+
+def _serialize_target(target: Target, expose_url: bool) -> TargetResponse:
+    return TargetResponse(
+        id=target.id,
+        name=target.name,
+        url=target.url if expose_url else mask_url(target.url),
+        enabled=target.enabled,
+        interval_s=target.interval_s,
+        timeout_s=target.timeout_s,
+        verify_tls=target.verify_tls,
+        created_at=target.created_at,
+        updated_at=target.updated_at,
+    )
+
+
+def _serialize_status_row(target: Target, check: Check | None, expose_url: bool) -> dict[str, Any]:
+    if check:
+        return {
+            "target_id": str(target.id),
+            "name": target.name,
+            "url": target.url if expose_url else mask_url(target.url),
+            "up": check.up,
+            "last_checked": check.checked_at,
+            "latency_ms": check.latency_ms,
+            "http_status": check.http_status,
+            "error_type": check.error_type,
+            "error_message": check.error_message,
+        }
+
+    return {
+        "target_id": str(target.id),
+        "name": target.name,
+        "url": target.url if expose_url else mask_url(target.url),
+        "up": None,
+        "last_checked": None,
+        "latency_ms": None,
+        "http_status": None,
+        "error_type": None,
+        "error_message": None,
+    }
+
+
 @router.get("/config", response_model=ConfigResponse)
 async def get_config() -> ConfigResponse:
     settings = get_settings()
     return ConfigResponse(app_timezone=settings.app_timezone)
 
 
+@router.get("/auth/me", response_model=AuthStateResponse)
+async def auth_me(request: Request) -> AuthStateResponse:
+    settings = get_settings()
+    return AuthStateResponse(
+        authenticated=is_authenticated(request),
+        auth_enabled=settings.auth_enabled,
+    )
+
+
+@router.post("/auth/login", response_model=AuthStateResponse)
+async def auth_login(payload: LoginRequest, request: Request) -> AuthStateResponse:
+    settings = get_settings()
+
+    if not settings.auth_enabled:
+        return AuthStateResponse(authenticated=True, auth_enabled=False)
+
+    if not verify_credentials(payload.username, payload.password, settings=settings):
+        raise HTTPException(status_code=401, detail="Invalid credentials")
+
+    set_authenticated(request)
+    return AuthStateResponse(authenticated=True, auth_enabled=True)
+
+
+@router.post("/auth/logout", response_model=AuthStateResponse)
+async def auth_logout(request: Request) -> AuthStateResponse:
+    settings = get_settings()
+    clear_authenticated(request)
+    return AuthStateResponse(authenticated=False, auth_enabled=settings.auth_enabled)
+
+
 @router.get("/targets", response_model=list[TargetResponse])
-async def list_targets(session: AsyncSession = Depends(get_session)) -> list[Target]:
+async def list_targets(
+    request: Request,
+    session: AsyncSession = Depends(get_session),
+) -> list[TargetResponse]:
     result = await session.execute(select(Target))
-    return list(result.scalars().all())
+    expose_url = is_authenticated(request)
+    return [_serialize_target(target, expose_url=expose_url) for target in result.scalars().all()]
 
 
 @router.post("/targets", response_model=TargetResponse, status_code=201)
 async def create_target(
-    target_data: TargetCreate, session: AsyncSession = Depends(get_session)
+    target_data: TargetCreate,
+    session: AsyncSession = Depends(get_session),
+    _: None = Depends(require_authenticated_user),
 ) -> Target:
     target = Target(**target_data.model_dump(mode="json"))
     session.add(target)
@@ -108,17 +205,24 @@ async def create_target(
 
 
 @router.get("/targets/{target_id}", response_model=TargetResponse)
-async def get_target(target_id: str, session: AsyncSession = Depends(get_session)) -> Target:
+async def get_target(
+    target_id: str,
+    request: Request,
+    session: AsyncSession = Depends(get_session),
+) -> TargetResponse:
     result = await session.execute(select(Target).where(Target.id == target_id))
     target = result.scalar_one_or_none()
     if target is None:
         raise HTTPException(status_code=404, detail="Target not found")
-    return target
+    return _serialize_target(target, expose_url=is_authenticated(request))
 
 
 @router.patch("/targets/{target_id}", response_model=TargetResponse)
 async def update_target(
-    target_id: str, target_update: TargetUpdate, session: AsyncSession = Depends(get_session)
+    target_id: str,
+    target_update: TargetUpdate,
+    session: AsyncSession = Depends(get_session),
+    _: None = Depends(require_authenticated_user),
 ) -> Target:
     result = await session.execute(select(Target).where(Target.id == target_id))
     target = result.scalar_one_or_none()
@@ -135,7 +239,11 @@ async def update_target(
 
 
 @router.delete("/targets/{target_id}", status_code=204)
-async def delete_target(target_id: str, session: AsyncSession = Depends(get_session)) -> None:
+async def delete_target(
+    target_id: str,
+    session: AsyncSession = Depends(get_session),
+    _: None = Depends(require_authenticated_user),
+) -> None:
     result = await session.execute(select(Target).where(Target.id == target_id))
     target = result.scalar_one_or_none()
     if target is None:
@@ -144,7 +252,10 @@ async def delete_target(target_id: str, session: AsyncSession = Depends(get_sess
 
 
 @router.get("/status", response_model=list[StatusResponse])
-async def get_status(session: AsyncSession = Depends(get_session)) -> list[dict[str, Any]]:
+async def get_status(
+    request: Request,
+    session: AsyncSession = Depends(get_session),
+) -> list[dict[str, Any]]:
     subq = (
         select(Check.target_id, func.max(Check.checked_at).label("last_checked"))
         .group_by(Check.target_id)
@@ -162,36 +273,10 @@ async def get_status(session: AsyncSession = Depends(get_session)) -> list[dict[
     targets = result.scalars().all()
 
     status = []
+    expose_url = is_authenticated(request)
     for target in targets:
         check = checks.get(target.id)
-        if check:
-            status.append(
-                {
-                    "target_id": str(target.id),
-                    "name": target.name,
-                    "url": target.url,
-                    "up": check.up,
-                    "last_checked": check.checked_at,
-                    "latency_ms": check.latency_ms,
-                    "http_status": check.http_status,
-                    "error_type": check.error_type,
-                    "error_message": check.error_message,
-                }
-            )
-        else:
-            status.append(
-                {
-                    "target_id": str(target.id),
-                    "name": target.name,
-                    "url": target.url,
-                    "up": None,
-                    "last_checked": None,
-                    "latency_ms": None,
-                    "http_status": None,
-                    "error_type": None,
-                    "error_message": None,
-                }
-            )
+        status.append(_serialize_status_row(target, check, expose_url=expose_url))
 
     return status
 

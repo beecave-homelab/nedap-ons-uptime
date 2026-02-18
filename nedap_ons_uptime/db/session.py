@@ -1,13 +1,14 @@
+from __future__ import annotations
+from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
-from typing import AsyncGenerator
 
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
-from .models import Base
+from nedap_ons_uptime.db.models import Base
 
 
 class Database:
-    def __init__(self, database_url: str):
+    def __init__(self, database_url: str) -> None:
         self.engine = create_async_engine(database_url, echo=False)
         self.async_session = async_sessionmaker(
             self.engine, expire_on_commit=False, class_=AsyncSession
