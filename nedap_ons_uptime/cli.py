@@ -3,8 +3,8 @@ import asyncio
 import typer
 from uvicorn import Config, Server
 
-from .app import create_app
-from .config import get_settings
+from nedap_ons_uptime.app import create_app
+from nedap_ons_uptime.config import get_settings
 
 app = typer.Typer(help="Nedap ONS Uptime Dashboard")
 

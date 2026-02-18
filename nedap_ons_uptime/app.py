@@ -6,10 +6,11 @@ from pathlib import Path
 from fastapi import FastAPI
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
+from starlette.middleware.sessions import SessionMiddleware
 
-from .api import router as api_router
-from .config import get_settings
-from .db.session import Database, set_database
+from nedap_ons_uptime.api import router as api_router
+from nedap_ons_uptime.config import get_settings
+from nedap_ons_uptime.db.session import Database, set_database
 
 STATIC_DIR = Path(__file__).parent / "static"
 
@@ -43,9 +44,10 @@ async def worker_task(concurrency: int) -> None:
 
 
 async def retention_task_loop(retention_days: int) -> None:
-    from .db.session import get_database as get_db
-    from .db.models import Check
     from sqlalchemy import delete
+
+    from .db.models import Check
+    from .db.session import get_database as get_db
 
     async def cleanup_old_checks() -> None:
         db = get_db()
@@ -60,6 +62,16 @@ async def retention_task_loop(retention_days: int) -> None:
 
 def create_app() -> FastAPI:
     app = FastAPI(title="Nedap ONS Uptime", lifespan=lifespan)
+    settings = get_settings()
+
+    app.add_middleware(
+        SessionMiddleware,
+        secret_key=settings.session_secret_key,
+        max_age=settings.session_max_age,
+        same_site="lax",
+        https_only=False,
+    )
+
     app.include_router(api_router, prefix="/api")
 
     app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")

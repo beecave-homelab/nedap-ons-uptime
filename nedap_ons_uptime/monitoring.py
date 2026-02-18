@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import asyncio
 import logging
 import ssl
@@ -9,8 +11,8 @@ import httpx
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from .db.models import Check, ErrorType, Target
-from .db.session import get_database
+from nedap_ons_uptime.db.models import Check, ErrorType, Target
+from nedap_ons_uptime.db.session import get_database
 
 logger = logging.getLogger(__name__)
 
