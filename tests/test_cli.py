@@ -1,4 +1,5 @@
-import os
+"""Test the cli module."""
+
 from types import SimpleNamespace
 
 from nedap_ons_uptime import cli

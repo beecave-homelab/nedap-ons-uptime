@@ -1,3 +1,5 @@
+"""Test the monitoring module."""
+
 import pytest
 
 from nedap_ons_uptime.db.models import ErrorType

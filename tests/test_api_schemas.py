@@ -1,3 +1,5 @@
+"""Test the api schemas."""
+
 from datetime import UTC, datetime
 from uuid import uuid4
 
