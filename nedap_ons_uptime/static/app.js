@@ -3,6 +3,10 @@ const API_BASE = '/api';
 let currentTargetId = null;
 let appTimezone = 'Europe/Amsterdam';
 let targets = [];
+let authState = {
+    authEnabled: true,
+    authenticated: false,
+};
 
 // Theme management
 const theme = {
@@ -40,9 +44,126 @@ const theme = {
     }
 };
 
+function isReadOnlyMode() {
+    return authState.authEnabled && !authState.authenticated;
+}
+
+function setAuthError(message = '') {
+    const authError = document.getElementById('auth-error');
+    if (!authError) return;
+
+    if (!message) {
+        authError.textContent = '';
+        authError.classList.add('hidden');
+        return;
+    }
+
+    authError.textContent = message;
+    authError.classList.remove('hidden');
+}
+
+function updateUiForAuthState() {
+    const addBtn = document.getElementById('add-btn');
+    const authStatusText = document.getElementById('auth-status-text');
+    const loginSection = document.getElementById('auth-login-section');
+    const logoutSection = document.getElementById('auth-logout-section');
+
+    if (authState.authEnabled) {
+        if (authState.authenticated) {
+            authStatusText.textContent = 'Signed in';
+            loginSection.classList.add('hidden');
+            logoutSection.classList.remove('hidden');
+            addBtn?.classList.remove('hidden');
+        } else {
+            authStatusText.textContent = 'Read-only mode';
+            loginSection.classList.remove('hidden');
+            logoutSection.classList.add('hidden');
+            addBtn?.classList.add('hidden');
+        }
+    } else {
+        authStatusText.textContent = 'Authentication disabled';
+        loginSection.classList.add('hidden');
+        logoutSection.classList.add('hidden');
+        addBtn?.classList.remove('hidden');
+    }
+}
+
+async function loadAuthState() {
+    try {
+        const state = await fetchAPI('/auth/me');
+        authState = {
+            authEnabled: state.auth_enabled,
+            authenticated: state.authenticated,
+        };
+    } catch (error) {
+        console.error('Error loading auth state:', error);
+        authState = {
+            authEnabled: true,
+            authenticated: false,
+        };
+    }
+
+    updateUiForAuthState();
+}
+
+async function handleLogin(event) {
+    event.preventDefault();
+    setAuthError('');
+
+    const formData = new FormData(event.target);
+    const payload = {
+        username: formData.get('username'),
+        password: formData.get('password'),
+    };
+
+    try {
+        const state = await fetchAPI('/auth/login', {
+            method: 'POST',
+            body: JSON.stringify(payload),
+        });
+
+        authState = {
+            authEnabled: state.auth_enabled,
+            authenticated: state.authenticated,
+        };
+        event.target.reset();
+        updateUiForAuthState();
+        loadTargets();
+    } catch (error) {
+        if (error.status === 401) {
+            setAuthError('Invalid username or password');
+            return;
+        }
+        setAuthError('Failed to sign in. Please try again.');
+    }
+}
+
+async function handleLogout() {
+    setAuthError('');
+    try {
+        const state = await fetchAPI('/auth/logout', { method: 'POST' });
+        authState = {
+            authEnabled: state.auth_enabled,
+            authenticated: state.authenticated,
+        };
+        updateUiForAuthState();
+        loadTargets();
+    } catch (error) {
+        console.error('Error during logout:', error);
+    }
+}
+
+function handleUnauthorizedWriteAction() {
+    authState.authEnabled = true;
+    authState.authenticated = false;
+    updateUiForAuthState();
+    setAuthError('Please sign in to modify targets.');
+}
+
 // API helper
 async function fetchAPI(endpoint, options = {}) {
     const response = await fetch(`${API_BASE}${endpoint}`, {
+        credentials: 'same-origin',
         headers: {
             'Content-Type': 'application/json',
             ...options.headers,
@@ -51,7 +172,22 @@ async function fetchAPI(endpoint, options = {}) {
     });
     
     if (!response.ok) {
-        throw new Error(`API error: ${response.status}`);
+        let detail = `API error: ${response.status}`;
+        const contentType = response.headers.get('content-type') || '';
+        if (contentType.includes('application/json')) {
+            try {
+                const payload = await response.json();
+                if (payload?.detail) {
+                    detail = payload.detail;
+                }
+            } catch (error) {
+                console.debug('Could not parse error payload', error);
+            }
+        }
+
+        const apiError = new Error(detail);
+        apiError.status = response.status;
+        throw apiError;
     }
     
     if (response.status === 204) {
@@ -117,6 +253,7 @@ async function loadTargets() {
         const status = await fetchAPI('/status');
         const list = document.getElementById('targets-list');
         targets = status;
+        const readOnlyMode = isReadOnlyMode();
 
         if (status.length === 0) {
             list.innerHTML = `
@@ -148,6 +285,13 @@ async function loadTargets() {
                 latencyCount++;
             }
 
+            const actions = readOnlyMode
+                ? '<span class="readonly-pill">Read-only</span>'
+                : `
+                        <button class="btn btn-secondary btn-sm" onclick="editTarget('${item.target_id}')">Edit</button>
+                        <button class="btn btn-danger btn-sm" onclick="deleteTarget('${item.target_id}')">Delete</button>
+                    `;
+
             return `
                 <div class="target-row">
                     <div class="target-name">
@@ -160,8 +304,7 @@ async function loadTargets() {
                     <div class="target-http">${formatHttpStatus(item.http_status)}</div>
                     <div class="target-error" title="${item.error_message || ''}">${item.error_message || ''}</div>
                     <div class="target-actions">
-                        <button class="btn btn-secondary btn-sm" onclick="editTarget('${item.target_id}')">Edit</button>
-                        <button class="btn btn-danger btn-sm" onclick="deleteTarget('${item.target_id}')">Delete</button>
+                        ${actions}
                     </div>
                 </div>
             `;
@@ -379,6 +522,11 @@ function hideModal() {
 
 // Edit target
 async function editTarget(targetId) {
+    if (isReadOnlyMode()) {
+        handleUnauthorizedWriteAction();
+        return;
+    }
+
     try {
         const target = await fetchAPI(`/targets/${targetId}`);
         document.getElementById('target-id').value = target.id;
@@ -396,6 +544,11 @@ async function editTarget(targetId) {
 
 // Delete target
 async function deleteTarget(targetId) {
+    if (isReadOnlyMode()) {
+        handleUnauthorizedWriteAction();
+        return;
+    }
+
     if (!confirm('Are you sure you want to delete this target?')) {
         return;
     }
@@ -406,6 +559,10 @@ async function deleteTarget(targetId) {
         });
         loadTargets();
     } catch (error) {
+        if (error.status === 401) {
+            handleUnauthorizedWriteAction();
+            return;
+        }
         console.error('Error deleting target:', error);
         alert('Failed to delete target');
     }
@@ -457,8 +614,15 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // Add target button
     document.getElementById('add-btn')?.addEventListener('click', () => {
+        if (isReadOnlyMode()) {
+            handleUnauthorizedWriteAction();
+            return;
+        }
         showModal('Add Target');
     });
+
+    document.getElementById('auth-login-form')?.addEventListener('submit', handleLogin);
+    document.getElementById('logout-btn')?.addEventListener('click', handleLogout);
     
     // Cancel buttons
     document.getElementById('cancel-btn')?.addEventListener('click', hideModal);
@@ -488,6 +652,12 @@ document.addEventListener('DOMContentLoaded', () => {
     // Form submit
     document.getElementById('target-form')?.addEventListener('submit', async (e) => {
         e.preventDefault();
+        if (isReadOnlyMode()) {
+            handleUnauthorizedWriteAction();
+            hideModal();
+            return;
+        }
+
         const formData = new FormData(e.target);
         const data = {
             name: formData.get('name'),
@@ -515,6 +685,10 @@ document.addEventListener('DOMContentLoaded', () => {
             hideModal();
             loadTargets();
         } catch (error) {
+            if (error.status === 401) {
+                handleUnauthorizedWriteAction();
+                return;
+            }
             console.error('Error saving target:', error);
             alert('Failed to save target');
         }
@@ -527,10 +701,12 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // Initialize
     loadAppConfig().then(() => {
-        loadTargets();
-        updateSystemTime();
-        setInterval(updateSystemTime, 1000);
-        setInterval(loadTargets, 5000);
+        loadAuthState().then(() => {
+            loadTargets();
+            updateSystemTime();
+            setInterval(updateSystemTime, 1000);
+            setInterval(loadTargets, 5000);
+        });
     });
 });
 

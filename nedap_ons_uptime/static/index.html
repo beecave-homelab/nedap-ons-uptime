@@ -47,6 +47,35 @@
                     <span class="status-text">System Online</span>
                 </div>
                 <span class="status-time" id="system-time">--:--:--</span>
+
+                <div class="auth-panel">
+                    <p id="auth-status-text" class="auth-status-text">Read-only mode</p>
+                    <div id="auth-login-section">
+                        <form id="auth-login-form" class="auth-form">
+                            <input
+                                type="text"
+                                id="auth-username"
+                                name="username"
+                                placeholder="Username"
+                                autocomplete="username"
+                                required
+                            >
+                            <input
+                                type="password"
+                                id="auth-password"
+                                name="password"
+                                placeholder="Password"
+                                autocomplete="current-password"
+                                required
+                            >
+                            <button type="submit" class="btn btn-primary btn-sm auth-submit-btn">Sign in</button>
+                        </form>
+                        <p id="auth-error" class="auth-error hidden"></p>
+                    </div>
+                    <div id="auth-logout-section" class="hidden">
+                        <button id="logout-btn" class="btn btn-secondary btn-sm auth-submit-btn">Sign out</button>
+                    </div>
+                </div>
                 
                 <div class="theme-toggle-sidebar">
                     <button class="btn-theme" id="theme-toggle" aria-label="Toggle dark mode">
