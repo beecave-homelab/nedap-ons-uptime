@@ -1,13 +1,14 @@
+"""Alembic environment configuration for online and offline migrations."""
+
 import asyncio
 from logging.config import fileConfig
 
-from alembic import context
 from sqlalchemy import pool
 from sqlalchemy.engine import Connection
 from sqlalchemy.ext.asyncio import async_engine_from_config
 
+from alembic import context
 from nedap_ons_uptime.db import Base
-from nedap_ons_uptime.db.session import Database
 
 config = context.config
 
@@ -18,12 +19,14 @@ target_metadata = Base.metadata
 
 
 def get_url() -> str:
+    """Return the database URL from environment variables or fallback default."""
     import os
 
     return os.environ.get("DATABASE_URL", "postgresql+asyncpg://user:pass@localhost:5432/uptime")
 
 
 def run_migrations_offline() -> None:
+    """Run migrations in offline mode."""
     url = get_url()
     context.configure(
         url=url,
@@ -37,6 +40,7 @@ def run_migrations_offline() -> None:
 
 
 def do_run_migrations(connection: Connection) -> None:
+    """Execute migrations using an active SQLAlchemy connection."""
     context.configure(connection=connection, target_metadata=target_metadata)
 
     with context.begin_transaction():
@@ -44,6 +48,7 @@ def do_run_migrations(connection: Connection) -> None:
 
 
 async def run_async_migrations() -> None:
+    """Run migrations in online mode using an async engine."""
     connectable = async_engine_from_config(
         configuration={
             **config.get_section(config.config_ini_section, {}),
@@ -60,6 +65,7 @@ async def run_async_migrations() -> None:
 
 
 def run_migrations_online() -> None:
+    """Entrypoint for online migrations."""
     asyncio.run(run_async_migrations())
 
 
