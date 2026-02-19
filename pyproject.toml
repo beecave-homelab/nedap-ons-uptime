@@ -29,19 +29,22 @@ dependencies = [
   "itsdangerous>=2.2,<3"
 ]
 
-[tool.pdm]
-
 [project.urls]
 Homepage = "https://github.com/beecave-homelab/nedap-ons-uptime"
 Repository = "https://github.com/beecave-homelab/nedap-ons-uptime"
 
 [project.optional-dependencies]
 dev = [
-  "pytest>=8",
-  "pytest-asyncio>=0.24",
-  "ruff>=0.5",
-  "mypy>=1.10",
+    "pytest>=8",
+    "pytest-asyncio>=0.24",
+    "ruff>=0.15.1",
+    "mypy>=1.10",
 ]
+
+[tool.pdm.scripts]
+lint = "ruff check ."
+fix = "ruff check --fix ."
+format = "ruff format ."
 
 [project.scripts]
 nedap-ons-uptime = "nedap_ons_uptime.cli:app"
@@ -54,6 +57,24 @@ nedap_ons_uptime = ["static/*"]
 
 [tool.ruff]
 line-length = 100
+
+[tool.ruff.lint]
+select = [
+  "F",
+  "E",
+  "W",
+  "N",
+  "I",
+  "D",
+  "ANN",
+  "TID",
+  "UP",
+  "FA",
+]
+ignore = []
+
+[tool.ruff.lint.pydocstyle]
+convention = "pep257"
 
 [tool.black]
 line-length = 100
