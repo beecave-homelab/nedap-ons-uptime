@@ -1,16 +1,21 @@
-from typing import Sequence, Union
+"""Initial schema for targets and checks tables."""
 
-from alembic import op
+from __future__ import annotations
+
+from collections.abc import Sequence
+
 import sqlalchemy as sa
 
+from alembic import op
 
 revision: str = "001"
-down_revision: Union[str, None] = None
-branch_labels: Union[str, Sequence[str], None] = None
-depends_on: Union[str, Sequence[str], None] = None
+down_revision: str | None = None
+branch_labels: str | Sequence[str] | None = None
+depends_on: str | Sequence[str] | None = None
 
 
 def upgrade() -> None:
+    """Create initial tables and indexes."""
     op.execute('CREATE EXTENSION IF NOT EXISTS "uuid-ossp"')
     op.create_table(
         "targets",
@@ -43,6 +48,7 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
+    """Drop initial tables and indexes."""
     op.drop_index(op.f("ix_checks_target_id"), table_name="checks")
     op.drop_index("ix_checks_checked_at", table_name="checks")
     op.drop_index("ix_checks_target_id_checked_at", table_name="checks")
