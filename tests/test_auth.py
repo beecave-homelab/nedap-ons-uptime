@@ -31,6 +31,7 @@ def _settings(*, auth_enabled: bool = True) -> Settings:
 
 
 def test_verify_credentials_accepts_single_configured_user() -> None:
+    """verify_credentials should validate the configured username/password."""
     settings = _settings()
 
     assert auth.verify_credentials("admin", "secret", settings=settings)
@@ -39,6 +40,7 @@ def test_verify_credentials_accepts_single_configured_user() -> None:
 
 
 def test_require_authenticated_user_rejects_unauthorized_request() -> None:
+    """require_authenticated_user should reject unauthenticated requests."""
     request = _request_with_session()
 
     with pytest.raises(HTTPException) as error:
@@ -48,16 +50,19 @@ def test_require_authenticated_user_rejects_unauthorized_request() -> None:
 
 
 def test_require_authenticated_user_allows_authenticated_session() -> None:
+    """require_authenticated_user should allow authenticated sessions."""
     request = _request_with_session({auth.AUTH_SESSION_KEY: True})
 
     auth.require_authenticated_user(request, settings=_settings(auth_enabled=True))
 
 
 def test_require_authenticated_user_skips_when_auth_disabled() -> None:
+    """require_authenticated_user should no-op when auth is disabled."""
     request = _request_with_session()
 
     auth.require_authenticated_user(request, settings=_settings(auth_enabled=False))
 
 
 def test_mask_url_hides_host_and_path() -> None:
+    """mask_url should hide hostname details and path segments."""
     assert auth.mask_url("https://example.com/health") == "https://e***/***"

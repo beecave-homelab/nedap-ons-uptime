@@ -7,6 +7,7 @@ from nedap_ons_uptime.api.routes import StatusResponse
 
 
 def test_status_response_allows_nulls_for_unchecked_target() -> None:
+    """Status response should accept null values before first check."""
     target_id = uuid4()
     model = StatusResponse(
         target_id=target_id,
@@ -25,6 +26,7 @@ def test_status_response_allows_nulls_for_unchecked_target() -> None:
 
 
 def test_status_response_allows_checked_target_values() -> None:
+    """Status response should accept populated values after checks."""
     target_id = uuid4()
     now = datetime.now(UTC)
     model = StatusResponse(
