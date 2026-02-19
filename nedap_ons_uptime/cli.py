@@ -17,15 +17,21 @@ def serve() -> None:
     import os
     import subprocess
     import sys
+    import time
 
     settings = get_settings()
 
-    result = subprocess.run(
-        [sys.executable, "-m", "alembic", "upgrade", "head"],
-        env={**os.environ, "DATABASE_URL": settings.database_url},
-    )
-    if result.returncode != 0:
-        typer.echo("Migration failed", err=True)
+    for attempt in range(1, 11):
+        result = subprocess.run(
+            [sys.executable, "-m", "alembic", "upgrade", "head"],
+            env={**os.environ, "DATABASE_URL": settings.database_url},
+        )
+        if result.returncode == 0:
+            break
+        typer.echo(f"Migration attempt {attempt}/10 failed, retrying in 3s...", err=True)
+        time.sleep(3)
+    else:
+        typer.echo("Migration failed after 10 attempts", err=True)
         raise typer.Exit(1)
 
     fastapi_app = create_app()
