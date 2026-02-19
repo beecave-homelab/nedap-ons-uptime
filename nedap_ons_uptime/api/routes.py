@@ -1,3 +1,5 @@
+"""API routes and request/response schemas for uptime resources."""
+
 from __future__ import annotations
 
 from datetime import datetime, timedelta
@@ -25,6 +27,8 @@ router = APIRouter()
 
 
 class TargetCreate(BaseModel):
+    """Payload for creating a monitored target."""
+
     name: str = Field(..., min_length=1, max_length=255)
     url: HttpUrl
     enabled: bool = True
@@ -34,6 +38,8 @@ class TargetCreate(BaseModel):
 
 
 class TargetUpdate(BaseModel):
+    """Payload for partially updating a monitored target."""
+
     name: str | None = Field(None, min_length=1, max_length=255)
     url: HttpUrl | None = None
     enabled: bool | None = None
@@ -43,6 +49,8 @@ class TargetUpdate(BaseModel):
 
 
 class TargetResponse(BaseModel):
+    """Serialized target resource."""
+
     id: UUID
     name: str
     url: str
@@ -57,6 +65,8 @@ class TargetResponse(BaseModel):
 
 
 class CheckResponse(BaseModel):
+    """Serialized check result."""
+
     id: UUID
     target_id: UUID
     checked_at: datetime
@@ -70,6 +80,8 @@ class CheckResponse(BaseModel):
 
 
 class StatusResponse(BaseModel):
+    """Latest check status for a target."""
+
     target_id: UUID
     name: str
     url: str
@@ -82,6 +94,8 @@ class StatusResponse(BaseModel):
 
 
 class UptimeResponse(BaseModel):
+    """Aggregated uptime statistics for a target."""
+
     target_id: UUID
     name: str
     uptime_percentage: float
@@ -91,15 +105,21 @@ class UptimeResponse(BaseModel):
 
 
 class ConfigResponse(BaseModel):
+    """Public runtime configuration exposed to clients."""
+
     app_timezone: str
 
 
 class LoginRequest(BaseModel):
+    """Login request payload."""
+
     username: str
     password: str
 
 
 class AuthStateResponse(BaseModel):
+    """Authentication state response payload."""
+
     authenticated: bool
     auth_enabled: bool
 
@@ -147,12 +167,14 @@ def _serialize_status_row(target: Target, check: Check | None, expose_url: bool)
 
 @router.get("/config", response_model=ConfigResponse)
 async def get_config() -> ConfigResponse:
+    """Return frontend configuration values."""
     settings = get_settings()
     return ConfigResponse(app_timezone=settings.app_timezone)
 
 
 @router.get("/auth/me", response_model=AuthStateResponse)
 async def auth_me(request: Request) -> AuthStateResponse:
+    """Return authentication state for the current request."""
     settings = get_settings()
     return AuthStateResponse(
         authenticated=is_authenticated(request),
@@ -162,6 +184,7 @@ async def auth_me(request: Request) -> AuthStateResponse:
 
 @router.post("/auth/login", response_model=AuthStateResponse)
 async def auth_login(payload: LoginRequest, request: Request) -> AuthStateResponse:
+    """Authenticate a user session."""
     settings = get_settings()
 
     if not settings.auth_enabled:
@@ -176,6 +199,7 @@ async def auth_login(payload: LoginRequest, request: Request) -> AuthStateRespon
 
 @router.post("/auth/logout", response_model=AuthStateResponse)
 async def auth_logout(request: Request) -> AuthStateResponse:
+    """Log out the current user session."""
     settings = get_settings()
     clear_authenticated(request)
     return AuthStateResponse(authenticated=False, auth_enabled=settings.auth_enabled)
@@ -186,6 +210,7 @@ async def list_targets(
     request: Request,
     session: AsyncSession = Depends(get_session),
 ) -> list[TargetResponse]:
+    """List all configured targets."""
     result = await session.execute(select(Target))
     expose_url = is_authenticated(request)
     return [_serialize_target(target, expose_url=expose_url) for target in result.scalars().all()]
@@ -197,6 +222,7 @@ async def create_target(
     session: AsyncSession = Depends(get_session),
     _: None = Depends(require_authenticated_user),
 ) -> Target:
+    """Create a new monitored target."""
     target = Target(**target_data.model_dump(mode="json"))
     session.add(target)
     await session.flush()
@@ -210,6 +236,7 @@ async def get_target(
     request: Request,
     session: AsyncSession = Depends(get_session),
 ) -> TargetResponse:
+    """Fetch a target by ID."""
     result = await session.execute(select(Target).where(Target.id == target_id))
     target = result.scalar_one_or_none()
     if target is None:
@@ -224,6 +251,7 @@ async def update_target(
     session: AsyncSession = Depends(get_session),
     _: None = Depends(require_authenticated_user),
 ) -> Target:
+    """Update an existing target by ID."""
     result = await session.execute(select(Target).where(Target.id == target_id))
     target = result.scalar_one_or_none()
     if target is None:
@@ -244,6 +272,7 @@ async def delete_target(
     session: AsyncSession = Depends(get_session),
     _: None = Depends(require_authenticated_user),
 ) -> None:
+    """Delete a target by ID."""
     result = await session.execute(select(Target).where(Target.id == target_id))
     target = result.scalar_one_or_none()
     if target is None:
@@ -256,6 +285,7 @@ async def get_status(
     request: Request,
     session: AsyncSession = Depends(get_session),
 ) -> list[dict[str, Any]]:
+    """Return latest status information for all targets."""
     subq = (
         select(Check.target_id, func.max(Check.checked_at).label("last_checked"))
         .group_by(Check.target_id)
@@ -287,6 +317,7 @@ async def get_target_history(
     hours: int = Query(default=24, ge=1, le=720),
     session: AsyncSession = Depends(get_session),
 ) -> list[Check]:
+    """Return historical checks for a specific target."""
     result = await session.execute(select(Target).where(Target.id == target_id))
     target = result.scalar_one_or_none()
     if target is None:
@@ -330,6 +361,7 @@ async def get_target_uptime(
     days: int = Query(default=30, ge=1, le=365),
     session: AsyncSession = Depends(get_session),
 ) -> dict[str, Any]:
+    """Return aggregated uptime stats for a target."""
     result = await session.execute(select(Target).where(Target.id == target_id))
     target = result.scalar_one_or_none()
     if target is None:
@@ -359,6 +391,8 @@ async def get_target_uptime(
 
 
 class DailyUptimeResponse(BaseModel):
+    """Daily uptime summary entry."""
+
     date: str
     uptime_percentage: float
     total_checks: int
@@ -372,7 +406,7 @@ async def get_target_daily_uptime(
     days: int = Query(default=30, ge=1, le=90),
     session: AsyncSession = Depends(get_session),
 ) -> list[dict[str, Any]]:
-    """Get daily uptime breakdown for the last N days."""
+    """Return daily uptime breakdown for the last N days."""
     result = await session.execute(select(Target).where(Target.id == target_id))
     target = result.scalar_one_or_none()
     if target is None:
@@ -410,12 +444,14 @@ async def get_target_daily_uptime(
         up = day_data["up"]
         uptime_pct = (up / total * 100) if total > 0 else 100.0
 
-        response.append({
-            "date": day_key,
-            "uptime_percentage": round(uptime_pct, 2),
-            "total_checks": total,
-            "up_checks": up,
-            "down_checks": total - up,
-        })
+        response.append(
+            {
+                "date": day_key,
+                "uptime_percentage": round(uptime_pct, 2),
+                "total_checks": total,
+                "up_checks": up,
+                "down_checks": total - up,
+            }
+        )
 
     return response
