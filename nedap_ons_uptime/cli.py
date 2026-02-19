@@ -1,3 +1,5 @@
+"""CLI entrypoints for running and maintaining the uptime service."""
+
 import asyncio
 
 import typer

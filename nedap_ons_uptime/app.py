@@ -1,4 +1,7 @@
+"""FastAPI application factory and background lifecycle tasks."""
+
 import asyncio
+from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager, suppress
 from datetime import datetime, timedelta
 from pathlib import Path
@@ -16,7 +19,8 @@ STATIC_DIR = Path(__file__).parent / "static"
 
 
 @asynccontextmanager
-async def lifespan(app: FastAPI):
+async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
+    """Initialize and tear down shared app resources."""
     settings = get_settings()
     db = Database(settings.database_url)
     set_database(db)
@@ -38,12 +42,14 @@ async def lifespan(app: FastAPI):
 
 
 async def worker_task(concurrency: int) -> None:
+    """Run the continuous target-check worker loop."""
     from .monitoring import worker_loop
 
     await worker_loop(concurrency=concurrency)
 
 
 async def retention_task_loop(retention_days: int) -> None:
+    """Periodically delete old checks according to retention policy."""
     from sqlalchemy import delete
 
     from .db.models import Check
@@ -61,6 +67,7 @@ async def retention_task_loop(retention_days: int) -> None:
 
 
 def create_app() -> FastAPI:
+    """Create and configure the FastAPI application."""
     app = FastAPI(title="Nedap ONS Uptime", lifespan=lifespan)
     settings = get_settings()
 
@@ -78,10 +85,12 @@ def create_app() -> FastAPI:
 
     @app.get("/healthz")
     async def healthz() -> dict[str, str]:
+        """Return a simple health status."""
         return {"status": "ok"}
 
     @app.get("/")
     async def index() -> FileResponse:
+        """Serve the single-page frontend."""
         return FileResponse(STATIC_DIR / "index.html")
 
     return app

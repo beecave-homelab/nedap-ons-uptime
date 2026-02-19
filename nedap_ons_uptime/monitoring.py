@@ -1,3 +1,5 @@
+"""Target probing and background monitoring loops."""
+
 from __future__ import annotations
 
 import asyncio
@@ -20,6 +22,7 @@ logger = logging.getLogger(__name__)
 async def probe_target(
     url: str, timeout_s: int, verify_tls: bool = True
 ) -> tuple[bool, int | None, int | None, str, str | None]:
+    """Probe a URL and return availability and diagnostic details."""
     start = time.monotonic()
     error_type = ErrorType.UNKNOWN
     error_message = None
@@ -71,6 +74,7 @@ async def probe_target(
 
 
 async def check_target(session: AsyncSession, target: Target) -> None:
+    """Run a probe for a target and persist the check result."""
     up, latency_ms, http_status, error_type, error_message = await probe_target(
         target.url, target.timeout_s, verify_tls=target.verify_tls
     )
@@ -88,11 +92,13 @@ async def check_target(session: AsyncSession, target: Target) -> None:
 
 
 async def load_targets(session: AsyncSession) -> list[Target]:
+    """Load all enabled targets."""
     result = await session.execute(select(Target).where(Target.enabled.is_(True)))
     return list(result.scalars().all())
 
 
 async def load_due_targets(session: AsyncSession) -> list[Target]:
+    """Load enabled targets due for a new check."""
     now = datetime.utcnow()
     subq = (
         select(Check.target_id, func.max(Check.checked_at).label("last_checked"))
@@ -120,6 +126,7 @@ async def load_due_targets(session: AsyncSession) -> list[Target]:
 
 
 async def run_checks(concurrency: int = 20) -> None:
+    """Execute one monitoring cycle across due targets."""
     db = get_database()
     async with db.session() as session:
         targets = await load_due_targets(session)
@@ -142,6 +149,7 @@ async def run_checks(concurrency: int = 20) -> None:
 
 
 async def worker_loop(interval_s: int = 60, concurrency: int = 20) -> None:
+    """Continuously run monitoring cycles with a fixed interval."""
     while True:
         await run_checks(concurrency)
         await asyncio.sleep(interval_s)
