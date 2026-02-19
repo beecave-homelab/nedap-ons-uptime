@@ -1,3 +1,5 @@
+"""Database models and session utilities."""
+
 from .models import Base, Check, ErrorType, Target
 from .session import Database, get_database, get_session, set_database
 

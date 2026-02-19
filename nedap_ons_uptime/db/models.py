@@ -1,6 +1,10 @@
+"""SQLAlchemy models for uptime targets and checks."""
+
+from __future__ import annotations
+
+import uuid
 from datetime import datetime
 from enum import Enum
-import uuid
 
 from sqlalchemy import Boolean, DateTime, ForeignKey, Index, Integer, String
 from sqlalchemy.dialects.postgresql import UUID
@@ -8,10 +12,14 @@ from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
 
 class Base(DeclarativeBase):
+    """Declarative base for ORM models."""
+
     pass
 
 
 class ErrorType(str, Enum):
+    """Normalized error categories for failed checks."""
+
     DNS = "dns"
     CONNECT = "connect"
     TLS = "tls"
@@ -21,6 +29,8 @@ class ErrorType(str, Enum):
 
 
 class Target(Base):
+    """Monitored target configuration."""
+
     __tablename__ = "targets"
 
     id: Mapped[UUID] = mapped_column(
@@ -43,10 +53,20 @@ class Target(Base):
     )
 
     def __repr__(self) -> str:
-        return f"<Target id={self.id} name={self.name} url={self.url} enabled={self.enabled} verify_tls={self.verify_tls}>"
+        """Return a concise representation of the target."""
+        return (
+            "<Target "
+            f"id={self.id} "
+            f"name={self.name} "
+            f"url={self.url} "
+            f"enabled={self.enabled} "
+            f"verify_tls={self.verify_tls}>"
+        )
 
 
 class Check(Base):
+    """Recorded probe result for a target."""
+
     __tablename__ = "checks"
 
     id: Mapped[UUID] = mapped_column(
@@ -68,4 +88,3 @@ class Check(Base):
         Index("ix_checks_target_id_checked_at", "target_id", "checked_at"),
         Index("ix_checks_checked_at", "checked_at"),
     )
-
